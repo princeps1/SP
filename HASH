@@ -1,0 +1,180 @@
+#pragma once
+#include <string>
+#include "ListELemLet.h"
+using namespace std;
+
+enum Status {FREE, DELETED, TAKEN};
+
+class HashObjectLet {
+private:
+	string key;
+	ListElemLet* val;
+	Status status;
+public:
+	HashObjectLet();
+	HashObjectLet(string, Let*, Status);
+	Status getStatus() const;
+	string getKey() const;
+	ListElemLet* getHead() const;
+	void addToHead(Let*);
+	void remove(Let*);
+	~HashObjectLet();
+};
+/////////////////////////////
+#include "HashObjectLet.h"
+
+
+HashObjectLet::HashObjectLet() : key(""), val(new ListElemLet(0, 0)), status(FREE) {}
+HashObjectLet::HashObjectLet(string k = "", Let* l = 0, Status s = FREE) : key(k), val(new ListElemLet(l, 0)), status(s) {}
+HashObjectLet::~HashObjectLet() {}
+Status HashObjectLet::getStatus() const { return status; }
+ListElemLet* HashObjectLet::getHead() const { return val; }
+string HashObjectLet::getKey() const { return key; }
+
+void HashObjectLet::addToHead(Let* l) {
+	val = new ListElemLet(l, val);
+}
+
+void HashObjectLet::remove(Let* l) {
+	if (val != 0) {
+		if (val->getVal() == l) {
+			ListElemLet* toDelete = val;
+			val = val->getNext();
+			delete toDelete;
+			if (val == 0) status = DELETED;
+		}
+		else {
+			ListElemLet* tmp = val;
+			while (tmp->getNext() != 0 && tmp->getNext()->getVal() != l) tmp = tmp->getNext();
+			ListElemLet* toDelete = tmp->getNext();
+			tmp->setNext(tmp->getNext()->getNext());
+			delete toDelete;
+		}
+	}
+}
+///////////////
+///////////////
+
+#pragma once
+#include "HashObjectLet.h"
+#define BROJ_LETOVA 100000
+#define KAPACITET (int)(1.25*BROJ_LETOVA)
+
+class HashTable {
+private:
+	HashObjectLet ar[KAPACITET];
+
+	int primTransf(string) const;
+	int sekTransf(int) const;
+public:
+	HashTable();
+	void insert(Let*);
+	void remove(Let*);
+	ListElemLet* getListByKey(string, string) const;
+	~HashTable();
+};
+////////////////////////////////////////
+#include "HashTable.h"
+
+HashTable::HashTable() {}
+HashTable::~HashTable() {}
+
+int HashTable::primTransf(string s) const {
+	int hashVal = 0;
+	for (int i = 0; i < s.length(); i++) {
+		hashVal += (i + 1)*s[i];
+		hashVal %= KAPACITET;
+	}
+	return hashVal;
+}
+
+int HashTable::sekTransf(int x) const {
+	return (x + 1) % KAPACITET;
+}
+
+void HashTable::insert(Let* l) {
+	string kod = l->stringRute();
+	int hashVal = primTransf(kod);
+	int br = 0;
+	while (br < BROJ_LETOVA && ar[hashVal].getStatus() == TAKEN && ar[hashVal].getKey() != kod) hashVal = sekTransf(hashVal), br++;
+	if (br >= BROJ_LETOVA) throw string("Puna tablica");
+	if (ar[hashVal].getStatus() != TAKEN) {
+		ar[hashVal] = HashObjectLet(kod, l, TAKEN);
+	}
+	else {
+		ar[hashVal].addToHead(l);
+	}
+}
+
+void HashTable::remove(Let* l) {
+	string kod = l->stringRute();
+	int hashVal = primTransf(kod);
+	int br = 0;
+	while (br < BROJ_LETOVA && ar[hashVal].getStatus() != FREE && ar[hashVal].getKey() != kod) hashVal = sekTransf(hashVal), br++;
+	if (br < BROJ_LETOVA && ar[hashVal].getStatus() == TAKEN) ar[hashVal].remove(l);
+}
+
+ListElemLet* HashTable::getListByKey(string key1, string key2) const {
+	string key = key1 + key2;
+	int hashVal = primTransf(key);
+	int br = 0;
+	while (br < BROJ_LETOVA && ar[hashVal].getStatus() != FREE && ar[hashVal].getKey() != key) hashVal = sekTransf(hashVal), br++;
+	return (ar[hashVal].getKey() == key ? ar[hashVal].getHead() : 0);
+}
+///////////////
+///////////////
+#pragma once
+#include <string>
+using namespace std;
+
+class Let {
+private:
+	string kodPolaznogAerodroma, kodDolaznogAerodroma, kodLeta;
+public:
+	Let(string, string, string);
+	string stringRute() const;
+	~Let();
+
+	friend ostream& operator<<(ostream&, Let&);
+};
+////////////////////////////////////////
+#include "Let.h"
+
+Let::Let(string kpa, string kda, string kl) : kodPolaznogAerodroma(kpa), kodDolaznogAerodroma(kda), kodLeta(kl) {}
+string Let::stringRute() const { return kodPolaznogAerodroma+kodDolaznogAerodroma; }
+Let::~Let() {}
+
+ostream& operator<<(ostream& out, Let& l) {
+	out << l.kodPolaznogAerodroma << " " << l.kodDolaznogAerodroma << " " << l.kodLeta << endl;
+	return out;
+}
+///////////////
+///////////////
+
+#pragma once
+#include "Let.h"
+
+class ListElemLet {
+private:
+	Let* val;
+	ListElemLet* next;
+public:
+	ListElemLet(Let*, ListElemLet*);
+	Let* getVal() const;
+	ListElemLet* getNext() const;
+	void setNext(ListElemLet*);
+	~ListElemLet();
+};
+////////////////////////////////////////
+#include "ListElemLet.h"
+
+ListElemLet::ListElemLet(Let* l, ListElemLet* nxt) : val(l), next(nxt) {}
+Let* ListElemLet::getVal() const { return val;  }
+ListElemLet* ListElemLet::getNext() const { return next; }
+void ListElemLet::setNext(ListElemLet* l) { next = l; }
+ListElemLet::~ListElemLet() {
+	delete val;
+}
+///////////////
+///////////////
+
